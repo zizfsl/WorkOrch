@@ -12,6 +12,40 @@ The system relies on a central Orchestrator Agent that routes requests intellige
 
 ## 🛠️ Architecture
 
+```mermaid
+flowchart LR
+    UI["👤 User Input\n\n• Plan My Day\n• Update Schedule\n• Analyze Productivity"] -- "Task\nRequests" --> O
+
+    subgraph System ["Deep Work Productivity System"]
+        direction TB
+        O["Orchestrator Agent\nRoutes Requests"]
+
+        P["Planner Agent\nCreate Schedule"]
+        Opt["Optimizer Agent\nAdjust Plan"]
+        R["Reflection Agent\nAnalyze Performance"]
+
+        O --> P
+        O --> Opt
+        O --> R
+
+        ST(["fa:fa-clock Schedule Tasks"])
+        RT(["fa:fa-calendar Reschedule Tasks"])
+        CM(["fa:fa-check-circle Compute Metrics"])
+        SD(["fa:fa-bars Save Day"])
+
+        P --> ST
+        Opt --> RT
+        R --> CM
+        R --> SD
+    end
+
+    DB[("Memory Database\nStore Insights")]
+    style DB fill:#e65100,stroke:#e65100,color:#fff
+    style UI fill:none,stroke:none
+
+    R -- "Log Data" --> DB
+```
+
 *   **`my_agent/agent.py`**: The core application housing the tool functions and agent definitions.
 *   **Tools**:
     *   `schedule_tasks`: Organizes items by priority and schedules them into blocks.
