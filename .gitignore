@@ -14,9 +14,7 @@ venv/
 # Secrets & Local DBs
 credentials.json
 token.json
-memory.json
-user_profiles.json
-last_user.json
+
 .adk/
 
 # OS files
