@@ -1,3 +1,7 @@
+# All tool functions moved to tools/ folder
+# This file now only contains agent definitions
+
+from google.adk.agents.llm_agent import Agent
 from google.adk.agents.llm_agent import Agent
 from tools.overload_detector import detect_overload_and_warn
 from tools.history_coach import load_history_and_suggest_improvements
@@ -84,12 +88,18 @@ def save_day(completion_rate: float, deep_work_hours: float) -> str:
     except Exception as e:
         return f"Failed to save to AlloyDB: {str(e)}"
 
+# ── Tool imports ───────────────────────────────────────────────
+from tools.scheduler         import schedule_tasks
+from tools.metrics           import compute_metrics
+from tools.memory_store      import save_day
+from tools.overload_detector import detect_overload_and_warn
+from tools.history_coach     import load_history_and_suggest_improvements
 
 # =====================================================
 # 🤖 AGENTS
 # =====================================================
 
-# 🔹 Planner Agent
+# Planner Agent
 planner_agent = Agent(
     model="gemini-2.5-flash",
     name="planner_agent",
@@ -111,7 +121,7 @@ Rules:
     tools=[schedule_tasks],
 )
 
-# 🔹 Optimizer Agent
+# Optimizer Agent
 optimizer_agent = Agent(
     model="gemini-2.5-flash",
     name="optimizer_agent",
@@ -132,7 +142,7 @@ Rules:
     tools=[schedule_tasks],
 )
 
-# 🔹 Reflection Agent
+# Reflection Agent
 reflection_agent = Agent(
     model="gemini-2.5-flash",
     name="reflection_agent",
@@ -181,6 +191,8 @@ Rules:
 """,
     tools=[detect_overload_and_warn],
 )
+
+# History Coach Agent
 # History Coach Agent          
 history_agent = Agent(
     model="gemini-2.5-flash",
@@ -230,6 +242,8 @@ Your job is to decide which agent to use:
 - If user has too many tasks / asks if day is realistic → call overload_agent
 - If user completed tasks / wants replan → call optimizer_agent
 - If user wants analysis or productivity review → call reflection_agent
+- If user asks about their history, patterns, weekly review,
+  or wants coaching → call history_agent
 - If user asks about their history, patterns, weekly review, or wants coaching → call history_agent
 
 IMPORTANT:
@@ -237,5 +251,13 @@ IMPORTANT:
 - Always delegate to the correct agent
 - Always run overload_agent BEFORE planner_agent when new tasks are given
 """,
+    sub_agents=[
+        planner_agent,
+        optimizer_agent,
+        reflection_agent,
+        overload_agent,
+        history_agent,
+    ],
+)
     sub_agents=[planner_agent, optimizer_agent, reflection_agent, overload_agent, history_agent],
 )
