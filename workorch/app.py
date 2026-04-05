@@ -167,10 +167,12 @@ async def api_chat(request: Request):
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    """Serve main page or redirect to login."""
+    """Serve main page or landing page."""
     creds = get_credentials()
     if not creds or not creds.valid:
-        return RedirectResponse(url="/auth/login")
+        html_path = os.path.join(STATIC_DIR, "landing.html")
+        with open(html_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
 
     # Serve the HTML file
     html_path = os.path.join(STATIC_DIR, "index.html")

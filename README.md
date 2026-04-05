@@ -1,5 +1,10 @@
 # 🚀 WorkOrch: The Intelligent Multi-Agent Productivity Orchestrator
 
+<div align="center">
+  <img src="assets/landing.png" alt="WorkOrch Landing Page UI" width="700"/>
+</div>
+
+
 WorkOrch is a state-of-the-art conversational multi-agent system built with the [Google ADK](https://github.com/google/google-agent-sdk). It helps you manage your day securely, prioritize deep work, fetch your actual emails and calendar events, calculate your productivity metrics, and review historical performance! Powered by **Gemini 2.5 Flash**, it is hosted on a sleek FastAPI web dashboard featuring user-friendly Google OAuth Authentication.
 
 ---
