@@ -1,0 +1,15 @@
+# Python cache — never commit these
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+.venv/
+venv/
+
+# Environment variables
+.env
+
+# OS files
+.DS_Store
