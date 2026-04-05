@@ -109,7 +109,20 @@ ALLOYDB_PASSWORD=your_secure_password
 ALLOYDB_DB_NAME=productivity_db
 ```
 
-### 4. Setting up Google Cloud AlloyDB
+### 4. Setting up Google OAuth & credentials.json
+To enable Google Authentication and Workspace integrations (Gmail, Calendar), you must configure a Google Cloud Console project and download your OAuth credentials:
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
+2. Create a new project or select an existing one.
+3. Enable the **Google Calendar API** and **Gmail API** in the "APIs & Services" > "Library" section.
+4. Navigate to **"APIs & Services" > "OAuth consent screen"** and configure it. Add the necessary scopes for reading calendar and email data.
+5. Navigate to **"APIs & Services" > "Credentials"**.
+6. Click **"Create Credentials"** and select **"OAuth client ID"**.
+7. Choose **"Web application"** as the application type.
+8. Set the "Authorized redirect URIs". For local development, add `http://localhost:8000/auth/callback`.
+9. Click **"Create"**, then click **"Download JSON"** to download the credentials.
+10. Rename the downloaded file to `credentials.json`, and place it in the `workorch/` directory (i.e. `workorch/credentials.json`).
+
+### 5. Setting up Google Cloud AlloyDB
 The Reflection Agent commits your productivity summaries to a PostgreSQL AlloyDB cluster to achieve secure global persistence.
 1. [Create an AlloyDB Cluster](https://codelabs.developers.google.com/quick-alloydb-setup?hl=en#0).
 2. Download and run the **AlloyDB Auth Proxy** to securely connect locally over port `5432`:
@@ -127,7 +140,7 @@ The Reflection Agent commits your productivity summaries to a PostgreSQL AlloyDB
    );
    ```
 
-### 5. Start the Application!
+### 6. Start the Application!
 Start the FastAPI server through Python:
 ```bash
 cd workorch
