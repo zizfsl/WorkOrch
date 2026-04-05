@@ -1,6 +1,6 @@
 from google.adk.agents.llm_agent import Agent
 from tools.overload_detector import detect_overload_and_warn
-
+from tools.history_coach import load_history_and_suggest_improvements
 from typing import List
 import json
 import os
@@ -173,6 +173,36 @@ Rules:
 """,
     tools=[detect_overload_and_warn],
 )
+# History Coach Agent          
+history_agent = Agent(
+    model="gemini-2.5-flash",
+    name="history_agent",
+    description="Reads past productivity data and gives personalised weekly insights.",
+    instruction="""
+You are a history and coaching agent.
+
+Goal:
+- Read the user's past productivity history from memory.json
+- Identify patterns in their completion rate and deep work hours
+- Give personalised, actionable suggestions
+
+Steps:
+1. Call load_history_and_suggest_improvements
+2. Present the results clearly:
+   - Average completion rate and deep work hours
+   - Best and worst days
+   - Patterns detected
+   - Specific suggestions
+   - Current streak
+
+Rules:
+- Always call the tool first, never guess from memory
+- Be encouraging, not critical
+- Make suggestions specific and actionable
+- If status is no_history, tell the user to complete their first day
+""",
+    tools=[load_history_and_suggest_improvements],
+)
 
 # =====================================================
 # 🧠 ORCHESTRATOR (ROUTER)
@@ -192,11 +222,12 @@ Your job is to decide which agent to use:
 - If user has too many tasks / asks if day is realistic → call overload_agent
 - If user completed tasks / wants replan → call optimizer_agent
 - If user wants analysis or productivity review → call reflection_agent
+- If user asks about their history, patterns, weekly review, or wants coaching → call history_agent
 
 IMPORTANT:
 - Do NOT answer yourself
 - Always delegate to the correct agent
 - Always run overload_agent BEFORE planner_agent when new tasks are given
 """,
-    sub_agents=[planner_agent, optimizer_agent, reflection_agent, overload_agent],
+    sub_agents=[planner_agent, optimizer_agent, reflection_agent, overload_agent, history_agent],
 )
