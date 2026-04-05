@@ -1,7 +1,7 @@
 from google.adk.agents.llm_agent import Agent
 from typing import List
-import json
 import os
+import psycopg2
 
 # =====================================================
 # 🧰 TOOLS (FLAT STRUCTURE - SAFE)
@@ -54,25 +54,33 @@ def compute_metrics(
     return f"Completion Rate: {completion_rate:.2f}, Deep Work Hours: {deep_work_hours}"
 
 
-def save_day(summary: str) -> str:
+def save_day(completion_rate: float, deep_work_hours: float) -> str:
     """
-    Save results.
+    Save results to AlloyDB.
     """
 
-    file_path = "memory.json"
+    summary = f"Completion Rate: {completion_rate:.2f}, Deep Work Hours: {deep_work_hours}"
 
-    if os.path.exists(file_path):
-        with open(file_path, "r") as f:
-            history = json.load(f)
-    else:
-        history = []
+    try:
+        conn = psycopg2.connect(
+            host=os.environ.get("ALLOYDB_HOST"),
+            user=os.environ.get("ALLOYDB_USER"),
+            password=os.environ.get("ALLOYDB_PASSWORD"),
+            dbname=os.environ.get("ALLOYDB_DB_NAME")
+        )
+        cursor = conn.cursor()
 
-    history.append(summary)
+        cursor.execute(
+            "INSERT INTO productivity_history (summary) VALUES (%s)",
+            (summary,)
+        )
 
-    with open(file_path, "w") as f:
-        json.dump(history, f, indent=2)
-
-    return "Saved successfully"
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return "Saved successfully to AlloyDB"
+    except Exception as e:
+        return f"Failed to save to AlloyDB: {str(e)}"
 
 
 # =====================================================
@@ -136,7 +144,7 @@ Goal:
 
 Steps:
 1. Call compute_metrics
-2. Call save_day
+2. Call save_day with the exact numeric values from compute_metrics
 
 Rules:
 - Always use tools
