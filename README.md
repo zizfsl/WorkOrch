@@ -1,92 +1,164 @@
-# Multi-Agent Productivity Tracker
+# 🚀 WorkOrch: The Intelligent Multi-Agent Productivity Orchestrator
 
-A conversational multi-agent system built using the [Google ADK](https://github.com/google/google-agent-sdk) to help you schedule, optimize, and reflect on your daily tasks. It leverages **Gemini 2.5 Flash** to automatically manage your time and prioritize deep work.
+WorkOrch is a state-of-the-art conversational multi-agent system built with the [Google ADK](https://github.com/google/google-agent-sdk). It helps you manage your day securely, prioritize deep work, fetch your actual emails and calendar events, calculate your productivity metrics, and review historical performance! Powered by **Gemini 2.5 Flash**, it is hosted on a sleek FastAPI web dashboard featuring user-friendly Google OAuth Authentication.
 
-## 🚀 Features
+---
 
-The system relies on a central Orchestrator Agent that routes requests intelligently between specialized sub-agents:
+## ✨ Features and Architecture
 
-*   **📅 Planner Agent**: Takes your tasks, priorities, and durations, and generates a structured schedule for the day.
-*   **⚙️ Optimizer Agent**: Recalculates and replans your schedule dynamically when tasks are completed or drop off.
-*   **📊 Reflection Agent**: Computes productivity metrics (like completion rate and deep work hours) and persists this historical data to `memory.json`.
-
-## 🛠️ Architecture
-
+### System Architecture
 ```mermaid
 flowchart LR
-    UI["👤 User Input\n\n• Plan My Day\n• Update Schedule\n• Analyze Productivity"] -- "Task\nRequests" --> O
+    UI["👤 User (Web/Chat)\n\n• 'Plan My Day'\n• 'What are my emails?'\n• 'How productive was I?'"] -- "Requests" --> O
 
-    subgraph System ["Deep Work Productivity System"]
+    subgraph Core ["WorkOrch Multi-Agent System"]
         direction TB
-        O["Orchestrator Agent\nRoutes Requests"]
+        O["🧠 Orchestrator Agent\n(Router)"]
+        
+        G["👋 Greeting"]
+        Pr["👤 Profile"]
+        Ov["🚨 Overload"]
+        P["📅 Planner"]
+        Opt["⚙️ Optimizer"]
+        R["📊 Reflection"]
+        H["📈 History Coach"]
+        A["🤖 Assistant"]
 
-        P["Planner Agent\nCreate Schedule"]
-        Opt["Optimizer Agent\nAdjust Plan"]
-        R["Reflection Agent\nAnalyze Performance"]
-
+        O --> G
+        O --> Pr
+        O --> Ov
         O --> P
         O --> Opt
         O --> R
-
-        ST(["fa:fa-clock Schedule Tasks"])
-        RT(["fa:fa-calendar Reschedule Tasks"])
-        CM(["fa:fa-check-circle Compute Metrics"])
-        SD(["fa:fa-bars Save Day"])
-
-        P --> ST
-        Opt --> RT
-        R --> CM
-        R --> SD
+        O --> H
+        O --> A
     end
 
-    DB[("Memory Database\nStore Insights")]
-    style DB fill:#e65100,stroke:#e65100,color:#fff
-    style UI fill:none,stroke:none
+    subgraph Integrations ["External Services & Tools"]
+        direction TB
+        GCal["Google Workspace (Calendar & Gmail)"]
+        OAuth["Google OAuth (Profiles)"]
+        MemDB[("Local Storage\nmemory.json / profiles.json")]
+        AlloyDB[("AlloyDB PostgreSQL\n(Productivity History)")]
+    end
 
-    R -- "Log Data" --> DB
+    A --> GCal
+    Pr --> OAuth
+    R --> AlloyDB
+    Pr --> MemDB
+    H --> MemDB
+
+    style AlloyDB fill:#e65100,stroke:#e65100,color:#fff
+    style MemDB fill:#1976D2,stroke:#1976D2,color:#fff
+    style UI fill:none,stroke:none
 ```
 
-*   **`my_agent/agent.py`**: The core application housing the tool functions and agent definitions.
-*   **Tools**:
-    *   `schedule_tasks`: Organizes items by priority and schedules them into blocks.
-    *   `compute_metrics`: Calculates productivity metrics and deep work time.
-    *   `save_day`: Records history safely into local JSON storage.
+The platform uses an intelligent **Orchestrator Agent** that determines the intent of your natural language requests and dynamically delegates them to one of **eight specialized sub-agents**:
 
-## 💻 Setup & Installation
+1. **👋 Greeting Agent**: Gives personalized welcome messages and feature previews.
+2. **👤 Profile Agent**: Collects and retains your working preferences, goals, and syncs seamlessly via Google OAuth login.
+3. **🚨 Overload Agent**: Calculates task durations against your scheduled hours to warn you before you over-commit.
+4. **📅 Planner Agent**: Constructs structured, optimized blocking schedules based on priorities and duration.
+5. **⚙️ Optimizer Agent**: Replans your day automatically when you finish early, run late, or emergencies happen.
+6. **📊 Reflection Agent**: Computes completion rates and "deep work" hours, saving end-of-day reports globally to Google Cloud AlloyDB.
+7. **📈 History Coach Agent**: Analyzes your archived JSON memory logs to surface trends, streaks, and personalized productivity coaching.
+8. **🤖 Assistant Agent**: Fetches your live Upcoming Events from Google Workspace Google Calendar and Unread Emails from Gmail.
 
-1.  **Clone the repository.**
-2.  **Activate the Virtual Environment** (for Windows):
-    ```powershell
-    .\.venv\Scripts\activate
-    ```
-3.  **Environment Variables**:
-    Make sure you have your API keys exported or stored in the `.env` file inside the `my_agent` directory:
-    ```env
-    GEMINI_API_KEY=your_api_key_here
-    ```
-4.  **Run the Agent**: You can run the root orchestrator agent (`orchestrator_agent`) using your preferred ADK runner or Python scripts.
+### Application Layout
+- `workorch/app.py`: The FastAPI server enabling the conversational dashboard and Google OAuth integration.
+- `workorch/agent.py`: The master agent definitions cleanly structured into one readable file.
+- `tools/`: The fully separated repository containing deterministic logic (`auth_tools.py`, `memory_store.py`, `scheduler.py`, `profile_tools.py`, etc.).
+- `workorch/google_tools.py` & `workorch/auth.py`: Live integration logic for the Workspace APIs.
 
-## 💬 Example Prompts to Test
+---
 
-You can test the system by sending natural language prompts to the orchestrator agent. Here are some examples to try out for each of the sub-agents:
+## 💻 Setup & Installation Guide
 
-### 1. Planning (Triggering the Planner Agent)
-*   *"I have 3 tasks today: Coding (priority 10, 3 hours, deep_work), Email (priority 5, 1 hour, shallow), and Meetings (priority 8, 2 hours, shallow). Please map out my day."*
-*   *"Plan my day. I need to write documentation for 2 hours (priority 7, shallow), fix bugs for 4 hours (priority 9, deep_work), and review PRs for 1 hour (priority 6, shallow)."*
-*   *"Create a schedule for me: 3 hours of focused coding, 1 hour taking a design meeting, and 2 hours catching up on team messages."*
+### 1. Prerequisites
+- Python 3.10+
+- Database: PostgeSQL dependencies (`psycopg2`) installed
+- Google Cloud Project with the **Gemini API** enabled, and **AlloyDB** configured.
 
-### 2. Optimization/Replanning (Triggering the Optimizer Agent)
-*   *"I finished my 1 hour of emails early. Adjust my schedule for the rest of the day."*
-*   *"The 2-hour meeting got canceled! Can you replan my remaining tasks?"*
-*   *"I just completed the bug-fixing task. What should I tackle next?"*
+### 2. General Setup
+1. **Clone the repository and enter the directory**:
+   ```bash
+   git clone <repo_url>
+   cd "Google ADK"
+   ```
+2. **Activate the Virtual Environment**:
+   ```powershell
+   # Windows
+   .\.venv\Scripts\activate
+   ```
+3. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+   *(Ensure you also run `pip install psycopg2` or `pip install psycopg2-binary` for the database connector).*
 
-### 3. Reflection & Storage (Triggering the Reflection Agent)
-*   *"How was my productivity today? Save my metrics."*
-*   *"I completed my coding and email tasks, but didn't get to the meeting. Calculate my deep work hours and completion rate, and record it."*
-*   *"Analyze my day's productivity. My tasks were 3 hours of deep work and 2 hours of shallow work. I finished the deep work. Please save this to memory."*
+### 3. Environment Variables (`.env`)
+Create a `.env` file inside the `workorch/` directory containing your necessary keys:
+```env
+# Gemini Auth
+GEMINI_API_KEY=your_gemini_api_key_here
 
-### 4. End-to-End Chat Test
-Try pasting these prompts consecutively in the exact same chat session to see the agents work as a cohesive system:
-1.  **Start:** *"I have an important feature to build (4h deep work, priority 10), code review (1h shallow, priority 7), and an admin meeting (1h shallow, priority 5). Plan my schedule."*
-2.  **Update:** *"I wrapped up the code review and the admin meeting. Please replan the remaining time."*
-3.  **Finish:** *"I'm done for the day. Compute my final productivity metrics and store them in memory."*
+# AlloyDB Postgres Setup
+ALLOYDB_HOST=127.0.0.1
+ALLOYDB_USER=postgres
+ALLOYDB_PASSWORD=your_secure_password
+ALLOYDB_DB_NAME=productivity_db
+```
+
+### 4. Setting up Google Cloud AlloyDB
+The Reflection Agent commits your productivity summaries to a PostgreSQL AlloyDB cluster to achieve secure global persistence.
+1. [Create an AlloyDB Cluster](https://codelabs.developers.google.com/quick-alloydb-setup?hl=en#0).
+2. Download and run the **AlloyDB Auth Proxy** to securely connect locally over port `5432`:
+   ```bash
+   ./alloydb-auth-proxy "projects/YOUR_PROJECT/locations/YOUR_REGION/clusters/YOUR_CLUSTER/instances/YOUR_INSTANCE"
+   ```
+3. Connect using AlloyDB Studio or a local SQL client, and execute:
+   ```sql
+   CREATE DATABASE productivity_db;
+   \c productivity_db;
+   CREATE TABLE productivity_history (
+       id SERIAL PRIMARY KEY,
+       summary TEXT NOT NULL,
+       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+   );
+   ```
+
+### 5. Start the Application!
+Start the FastAPI server through Python:
+```bash
+cd workorch
+python app.py
+```
+Visit **http://localhost:8000** in your browser. You can click "Login with Google" on the sleek glassmorphism interface to securely authenticate and automatically generate your user profile.
+
+---
+
+## 💬 Example Prompts to Test Every Agent
+
+You can test the entire workflow of the platform using these sample conversational prompts. The Orchestrator will automatically route the queries!
+
+### 👋 Greetings & 👤 Profile
+* *"Hey there!"* or *"Good morning WorkOrch!"* (Greeting Agent)
+* *"Who am I?"* or *"Can you setup my profile?"* (Profile Agent)
+* *"My name is Alex. I work from 8 to 4 and my goal is to launch this app."* (Profile Agent - Manual setup)
+
+### 🤖 Assistant (Calendar & Email Hooks)
+* *"What is on my calendar for today?"* or *"Do I have any meetings coming up?"*
+* *"Read me my latest unread emails."*
+
+### 🚨 Overload & 📅 Planner
+* *"I have 5 tasks: coding (priority 10, 4 hours), emails (priority 5, 2 hours), meeting (priority 8, 1 hour), review PRs (priority 4, 3 hours). Available time: 7.5 hours. Please plan my day."* 
+*(This will trigger Overload Agent to warn you of excess tasks, then Planner Agent will create the structured list).*
+
+### ⚙️ Optimizer
+* *"I finished my 1-hour meeting early. Please adjust my schedule for the rest of the day."*
+* *"I just completed the coding task. Replanning please."*
+
+### 📊 Reflection & 📈 History Coach
+* *"I'm done for the day! I completed my coding and meeting items, but skipped emails. Save my metrics to the database."* (Reflection Agent - hits AlloyDB)
+* *"Analyze my historical productivity. How have I been doing this week?"* (History Coach Agent - reads patterns from `memory.json`)
+* *"What is my current streak? Give me some coaching."* (History Coach Agent)

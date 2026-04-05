@@ -3,6 +3,7 @@
 
 import json
 import os
+import psycopg2
 
 
 def save_day(summary: str) -> str:
@@ -10,7 +11,8 @@ def save_day(summary: str) -> str:
     Appends today's productivity summary to memory.json.
     Creates the file if it doesn't exist yet.
     """
-    file_path = "memory.json"
+    WORKORCH_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "workorch")
+    file_path = os.path.join(WORKORCH_DIR, "memory.json")
 
     if os.path.exists(file_path):
         with open(file_path, "r") as f:
@@ -24,3 +26,32 @@ def save_day(summary: str) -> str:
         json.dump(history, f, indent=2)
 
     return "Saved successfully"
+
+
+def save_day_to_db(completion_rate: float, deep_work_hours: float) -> str:
+    """
+    Save results to AlloyDB.
+    """
+
+    summary = f"Completion Rate: {completion_rate:.2f}, Deep Work Hours: {deep_work_hours}"
+
+    try:
+        conn = psycopg2.connect(
+            host=os.environ.get("ALLOYDB_HOST"),
+            user=os.environ.get("ALLOYDB_USER"),
+            password=os.environ.get("ALLOYDB_PASSWORD"),
+            dbname=os.environ.get("ALLOYDB_DB_NAME")
+        )
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "INSERT INTO productivity_history (summary) VALUES (%s)",
+            (summary,)
+        )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return "Saved successfully to AlloyDB"
+    except Exception as e:
+        return f"Failed to save to AlloyDB: {str(e)}"
