@@ -2,6 +2,91 @@
 # This file now only contains agent definitions
 
 from google.adk.agents.llm_agent import Agent
+from google.adk.agents.llm_agent import Agent
+from tools.overload_detector import detect_overload_and_warn
+from tools.history_coach import load_history_and_suggest_improvements
+from typing import List
+import os
+import psycopg2
+
+# =====================================================
+# 🧰 TOOLS (FLAT STRUCTURE - SAFE)
+# =====================================================
+
+def schedule_tasks(
+    task_names: List[str],
+    priorities: List[int],
+    durations: List[int],
+    types: List[str]
+) -> List[str]:
+    """
+    Create a structured schedule.
+    """
+
+    tasks = list(zip(task_names, priorities, durations, types))
+    tasks.sort(key=lambda x: x[1], reverse=True)
+
+    current_hour = 9
+    schedule = []
+
+    for name, priority, duration, ttype in tasks:
+        block = f"{name} ({ttype}) → {current_hour}:00 to {current_hour + duration}:00"
+        schedule.append(block)
+        current_hour += duration
+
+    return schedule
+
+
+def compute_metrics(
+    durations: List[int],
+    types: List[str],
+    completed_indices: List[int]
+) -> str:
+    """
+    Compute productivity metrics.
+    """
+
+    total = len(durations)
+    completed = len(completed_indices)
+
+    deep_work_hours = sum(
+        durations[i]
+        for i in completed_indices
+        if types[i] == "deep_work"
+    )
+
+    completion_rate = completed / total if total else 0
+
+    return f"Completion Rate: {completion_rate:.2f}, Deep Work Hours: {deep_work_hours}"
+
+
+def save_day(completion_rate: float, deep_work_hours: float) -> str:
+    """
+    Save results to AlloyDB.
+    """
+
+    summary = f"Completion Rate: {completion_rate:.2f}, Deep Work Hours: {deep_work_hours}"
+
+    try:
+        conn = psycopg2.connect(
+            host=os.environ.get("ALLOYDB_HOST"),
+            user=os.environ.get("ALLOYDB_USER"),
+            password=os.environ.get("ALLOYDB_PASSWORD"),
+            dbname=os.environ.get("ALLOYDB_DB_NAME")
+        )
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "INSERT INTO productivity_history (summary) VALUES (%s)",
+            (summary,)
+        )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return "Saved successfully to AlloyDB"
+    except Exception as e:
+        return f"Failed to save to AlloyDB: {str(e)}"
 
 # ── Tool imports ───────────────────────────────────────────────
 from tools.scheduler         import schedule_tasks
@@ -71,7 +156,7 @@ Goal:
 
 Steps:
 1. Call compute_metrics
-2. Call save_day
+2. Call save_day with the exact numeric values from compute_metrics
 
 Rules:
 - Always use tools
@@ -108,6 +193,7 @@ Rules:
 )
 
 # History Coach Agent
+# History Coach Agent          
 history_agent = Agent(
     model="gemini-2.5-flash",
     name="history_agent",
@@ -158,6 +244,7 @@ Your job is to decide which agent to use:
 - If user wants analysis or productivity review → call reflection_agent
 - If user asks about their history, patterns, weekly review,
   or wants coaching → call history_agent
+- If user asks about their history, patterns, weekly review, or wants coaching → call history_agent
 
 IMPORTANT:
 - Do NOT answer yourself
@@ -171,4 +258,6 @@ IMPORTANT:
         overload_agent,
         history_agent,
     ],
+)
+    sub_agents=[planner_agent, optimizer_agent, reflection_agent, overload_agent, history_agent],
 )
