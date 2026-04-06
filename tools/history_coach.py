@@ -3,24 +3,53 @@
 # Solves Issue #2 — reads memory.json and gives personalised suggestions
 # Closes the loop: save_day (writes) and this tool (reads + learns)
 
-import json
 import os
+import psycopg2
 from datetime import datetime
 
 def load_history_and_suggest_improvements(
-    memory_file: str = "memory.json",
-    days_to_analyze: int = 7
+    days_to_analyze: int = 7,
+    user_name: str = ""
 ) -> dict:
     """
-    Reads past productivity data from memory.json and returns
+    Reads past productivity data from AlloyDB and returns
     personalised suggestions based on the user's actual patterns.
 
     This transforms the system from a one-shot scheduler into
     a learning productivity coach.
     """
 
-    # Guard: file doesn't exist yet 
-    if not os.path.exists(memory_file):
+    try:
+        conn = psycopg2.connect(
+            host=os.environ.get("ALLOYDB_HOST"),
+            user=os.environ.get("ALLOYDB_USER"),
+            password=os.environ.get("ALLOYDB_PASSWORD"),
+            dbname=os.environ.get("ALLOYDB_DB_NAME")
+        )
+        cursor = conn.cursor()
+        
+        if not user_name:
+            cursor.execute("SELECT name FROM user_profiles ORDER BY last_active DESC LIMIT 1")
+            row = cursor.fetchone()
+            if row:
+                user_name = row[0]
+            else:
+                return {"status": "error", "message": "No active user found to load history for."}
+
+        cursor.execute(
+            "SELECT summary FROM productivity_history WHERE user_name = %s ORDER BY created_at ASC",
+            (user_name,)
+        )
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"AlloyDB could not be read. Error: {str(e)}"
+        }
+
+    if not rows:
         return {
             "status": "no_history",
             "message": (
@@ -30,15 +59,7 @@ def load_history_and_suggest_improvements(
             )
         }
 
-    # Load the file
-    with open(memory_file, "r") as f:
-        try:
-            raw_data = json.load(f)
-        except json.JSONDecodeError:
-            return {
-                "status": "error",
-                "message": "memory.json could not be read. It may be corrupted."
-            }
+    raw_data = [row[0] for row in rows]
 
     # Handle old plain-string format (e.g. ["Completion Rate: 0.33, Deep Work Hours: 2"])
     # Parse strings into structured dicts so we can do maths on them

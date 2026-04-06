@@ -1,27 +1,19 @@
-import json
 import os
 from datetime import date
+import psycopg2
+from psycopg2.extras import Json
 
 # =====================================================
-# 📂 PATH HELPERS
+# 📂 DB HELPERS
 # =====================================================
 
-WORKORCH_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "workorch")
-PROFILES_FILE = os.path.join(WORKORCH_DIR, "user_profiles.json")
-LAST_USER_FILE = os.path.join(WORKORCH_DIR, "last_user.json")
-MEMORY_FILE = os.path.join(WORKORCH_DIR, "memory.json")
-
-
-def _load_json(path: str, default=None):
-    if os.path.exists(path):
-        with open(path, "r") as f:
-            return json.load(f)
-    return default if default is not None else {}
-
-
-def _save_json(path: str, data):
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
+def get_db_connection():
+    return psycopg2.connect(
+        host=os.environ.get("ALLOYDB_HOST"),
+        user=os.environ.get("ALLOYDB_USER"),
+        password=os.environ.get("ALLOYDB_PASSWORD"),
+        dbname=os.environ.get("ALLOYDB_DB_NAME")
+    )
 
 
 # =====================================================
@@ -41,49 +33,41 @@ def create_or_update_profile(
     Also sets this user as the last active user so they are auto-remembered.
     Pass goals as a comma-separated string like 'finish report, read papers'.
     """
+    name_key = user_name.strip().lower()
+    today = date.today()
+    goals_list = [g.strip() for g in goals.split(",")] if goals else []
 
-    profiles = _load_json(PROFILES_FILE, {})
-    key = user_name.strip().lower()
-    today = str(date.today())
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
-    if key in profiles:
-        # Update existing profile
-        profile = profiles[key]
-        profile["total_sessions"] = profile.get("total_sessions", 0) + 1
-        profile["last_active"] = today
-        if role:
-            profile["role"] = role
-        if goals:
-            profile["goals"] = [g.strip() for g in goals.split(",")]
-        if preferred_work_start:
-            profile["preferred_work_start"] = preferred_work_start
-        if preferred_work_end:
-            profile["preferred_work_end"] = preferred_work_end
-        if work_style:
-            profile["work_style"] = work_style
-    else:
-        # Create new profile
-        profile = {
-            "name": user_name.strip(),
-            "role": role,
-            "preferred_work_start": preferred_work_start,
-            "preferred_work_end": preferred_work_end,
-            "work_style": work_style,
-            "goals": [g.strip() for g in goals.split(",")] if goals else [],
-            "total_sessions": 1,
-            "avg_completion_rate": 0.0,
-            "total_deep_work_hours": 0,
-            "last_active": today,
-            "history": []
-        }
+    query = """
+    INSERT INTO user_profiles (
+        name, role, preferred_work_start, preferred_work_end,
+        work_style, goals, total_sessions, avg_completion_rate,
+        total_deep_work_hours, last_active, history
+    ) VALUES (%s, %s, %s, %s, %s, %s, 1, 0.0, 0, %s, %s)
+    ON CONFLICT (name) DO UPDATE SET
+        role = CASE WHEN EXCLUDED.role <> '' THEN EXCLUDED.role ELSE user_profiles.role END,
+        preferred_work_start = EXCLUDED.preferred_work_start,
+        preferred_work_end = EXCLUDED.preferred_work_end,
+        work_style = EXCLUDED.work_style,
+        goals = CASE WHEN EXCLUDED.goals::text <> '[]' THEN EXCLUDED.goals ELSE user_profiles.goals END,
+        total_sessions = user_profiles.total_sessions + 1,
+        last_active = EXCLUDED.last_active;
+    """
+    cursor.execute(query, (
+        name_key, role, preferred_work_start, preferred_work_end,
+        work_style, Json(goals_list), today, Json([])
+    ))
 
-    profiles[key] = profile
-    _save_json(PROFILES_FILE, profiles)
+    cursor.execute("SELECT total_sessions FROM user_profiles WHERE name = %s", (name_key,))
+    total_sessions = cursor.fetchone()[0]
 
-    # Remember this user as the last active user
-    _save_json(LAST_USER_FILE, {"last_user": key})
+    conn.commit()
+    cursor.close()
+    conn.close()
 
-    return f"Profile for '{user_name}' saved. Sessions: {profile['total_sessions']}, Last active: {today}"
+    return f"Profile for '{user_name}' saved. Sessions: {total_sessions}, Last active: {today}"
 
 
 def get_profile(user_name: str = "") -> str:
@@ -91,36 +75,45 @@ def get_profile(user_name: str = "") -> str:
     Retrieve a user's profile. If user_name is empty, retrieves the last active user's profile.
     Returns the profile as a formatted summary, or a message if no profile is found.
     """
-
-    profiles = _load_json(PROFILES_FILE, {})
-
-    if not user_name:
-        last = _load_json(LAST_USER_FILE, {})
-        user_name = last.get("last_user", "")
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
     if not user_name:
-        return "NO_PROFILE_FOUND"
+        cursor.execute("SELECT name FROM user_profiles ORDER BY last_active DESC LIMIT 1")
+        row = cursor.fetchone()
+        if not row:
+            cursor.close()
+            conn.close()
+            return "NO_PROFILE_FOUND"
+        user_name = row[0]
 
     key = user_name.strip().lower()
-    profile = profiles.get(key)
+    cursor.execute(
+        "SELECT name, role, preferred_work_start, preferred_work_end, work_style, goals, total_sessions, avg_completion_rate, total_deep_work_hours, last_active, history FROM user_profiles WHERE name = %s",
+        (key,)
+    )
+    row = cursor.fetchone()
+    cursor.close()
+    conn.close()
 
-    if not profile:
+    if not row:
         return "NO_PROFILE_FOUND"
 
-    goals_str = ", ".join(profile.get("goals", [])) if profile.get("goals") else "None set"
-    history_count = len(profile.get("history", []))
+    name, role, start, end, style, goals, sessions, avg_rate, deep_hours, last_active, history = row
+    goals_str = ", ".join(goals) if goals else "None set"
+    history_count = len(history) if history else 0
 
     return (
-        f"👤 Name: {profile['name']}\n"
-        f"💼 Role: {profile.get('role', 'Not set')}\n"
-        f"🕐 Work Hours: {profile.get('preferred_work_start', 9)}:00 - {profile.get('preferred_work_end', 17)}:00\n"
-        f"🧠 Work Style: {profile.get('work_style', 'deep_work')}\n"
+        f"👤 Name: {name}\n"
+        f"💼 Role: {role or 'Not set'}\n"
+        f"🕐 Work Hours: {start}:00 - {end}:00\n"
+        f"🧠 Work Style: {style or 'deep_work'}\n"
         f"🎯 Goals: {goals_str}\n"
-        f"📊 Sessions: {profile.get('total_sessions', 0)}\n"
-        f"✅ Avg Completion Rate: {profile.get('avg_completion_rate', 0):.2f}\n"
-        f"⏱️ Total Deep Work Hours: {profile.get('total_deep_work_hours', 0)}\n"
-        f"📅 Last Active: {profile.get('last_active', 'Unknown')}\n"
-        f"📝 Past Summaries: {history_count} entries"
+        f"📊 Sessions: {sessions}\n"
+        f"✅ Avg Completion Rate: {avg_rate:.2f}\n"
+        f"⏱️ Total Deep Work Hours: {deep_hours}\n"
+        f"📅 Last Active: {last_active}\n"
+        f" Past Summaries: {history_count} entries"
     )
 
 
@@ -129,29 +122,33 @@ def get_user_history(user_name: str = "") -> str:
     Retrieve a user's past day summaries from their profile.
     If user_name is empty, retrieves history for the last active user.
     """
-
-    profiles = _load_json(PROFILES_FILE, {})
-
-    if not user_name:
-        last = _load_json(LAST_USER_FILE, {})
-        user_name = last.get("last_user", "")
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
     if not user_name:
-        return "No user found. Please provide a user name."
+        cursor.execute("SELECT name FROM user_profiles ORDER BY last_active DESC LIMIT 1")
+        row = cursor.fetchone()
+        if not row:
+            cursor.close()
+            conn.close()
+            return "No user found. Please provide a user name."
+        user_name = row[0]
 
     key = user_name.strip().lower()
-    profile = profiles.get(key)
+    cursor.execute("SELECT name, history FROM user_profiles WHERE name = %s", (key,))
+    row = cursor.fetchone()
+    cursor.close()
+    conn.close()
 
-    if not profile:
+    if not row:
         return f"No profile found for '{user_name}'."
 
-    history = profile.get("history", [])
-
+    name, history = row
     if not history:
-        return f"No past summaries found for {profile['name']}. Start planning your day to build history!"
+        return f"No past summaries found for {name}. Start planning your day to build history!"
 
     formatted = [f"📅 Session {i+1}: {entry}" for i, entry in enumerate(history)]
-    return f"History for {profile['name']}:\n" + "\n".join(formatted)
+    return f"History for {name}:\n" + "\n".join(formatted)
 
 
 def update_profile_stats(
@@ -166,42 +163,53 @@ def update_profile_stats(
     and appends the day summary to their history.
     If user_name is empty, updates the last active user.
     """
-
-    profiles = _load_json(PROFILES_FILE, {})
-
-    if not user_name:
-        last = _load_json(LAST_USER_FILE, {})
-        user_name = last.get("last_user", "")
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
     if not user_name:
-        return "No user found. Please provide a user name."
+        cursor.execute("SELECT name FROM user_profiles ORDER BY last_active DESC LIMIT 1")
+        row = cursor.fetchone()
+        if not row:
+            cursor.close()
+            conn.close()
+            return "No user found. Please provide a user name."
+        user_name = row[0]
 
     key = user_name.strip().lower()
-    profile = profiles.get(key)
-
-    if not profile:
+    cursor.execute("SELECT name, total_sessions, avg_completion_rate, total_deep_work_hours, history FROM user_profiles WHERE name = %s", (key,))
+    row = cursor.fetchone()
+    
+    if not row:
+        cursor.close()
+        conn.close()
         return f"No profile found for '{user_name}'."
 
-    # Update running average completion rate
-    sessions = profile.get("total_sessions", 1)
-    old_avg = profile.get("avg_completion_rate", 0.0)
-    profile["avg_completion_rate"] = round(((old_avg * (sessions - 1)) + completion_rate) / sessions, 2)
+    name, sessions, old_avg, old_deep, history = row
+    if not history:
+        history = []
 
-    # Accumulate deep work hours
-    profile["total_deep_work_hours"] = profile.get("total_deep_work_hours", 0) + deep_work_hours
-
-    # Append day summary to per-user history
+    sessions = sessions if sessions > 0 else 1
+    new_avg = round(((old_avg * (sessions - 1)) + completion_rate) / sessions, 2)
+    new_deep = old_deep + deep_work_hours
+    
     if day_summary:
-        if "history" not in profile:
-            profile["history"] = []
-        profile["history"].append(f"[{date.today()}] {day_summary}")
+        history.append(f"[{date.today()}] {day_summary}")
 
-    profile["last_active"] = str(date.today())
-    profiles[key] = profile
-    _save_json(PROFILES_FILE, profiles)
+    cursor.execute("""
+        UPDATE user_profiles
+        SET avg_completion_rate = %s,
+            total_deep_work_hours = %s,
+            history = %s,
+            last_active = %s
+        WHERE name = %s
+    """, (new_avg, new_deep, Json(history), date.today(), key))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
 
     return (
-        f"Stats updated for {profile['name']}! "
-        f"Avg Completion: {profile['avg_completion_rate']:.2f}, "
-        f"Total Deep Work: {profile['total_deep_work_hours']}h"
+        f"Stats updated for {name}! "
+        f"Avg Completion: {new_avg:.2f}, "
+        f"Total Deep Work: {new_deep}h"
     )

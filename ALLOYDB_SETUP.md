@@ -32,8 +32,24 @@ CREATE DATABASE productivity_db;
 -- Create the table for the Reflection Agent
 CREATE TABLE productivity_history (
     id SERIAL PRIMARY KEY,
+    user_name VARCHAR(255),
     summary TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create the table for User Profiles & History
+CREATE TABLE user_profiles (
+    name VARCHAR(255) PRIMARY KEY,
+    role VARCHAR(255),
+    preferred_work_start INT DEFAULT 9,
+    preferred_work_end INT DEFAULT 17,
+    work_style VARCHAR(50),
+    goals JSONB,
+    total_sessions INT DEFAULT 0,
+    avg_completion_rate FLOAT DEFAULT 0.0,
+    total_deep_work_hours INT DEFAULT 0,
+    last_active DATE,
+    history JSONB
 );
 ```
 
