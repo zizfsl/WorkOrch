@@ -2,7 +2,9 @@
 # Tool 1: detect_overload_and_warn
 # Solves Issue #1 — prevents agent from scheduling impossible days
 
-def detect_overload_and_warn(tasks: list, available_hours: float = 7.5) -> dict:
+from typing import List, Dict, Any
+
+def detect_overload_and_warn(tasks: List[Dict[str, Any]], available_hours: float = 7.5) -> dict:
     """
     Checks if total task hours exceed available working hours.
     If overloaded, recommends which tasks to defer (lowest priority first).

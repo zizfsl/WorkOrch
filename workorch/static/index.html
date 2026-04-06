@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="WorkOrch — Smart Work Orchestration Dashboard powered by AI">
+  <title>WorkOrch — Smart Work Orchestrator</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Initializing WorkOrch...</div>
+  </div>
+
+  <!-- Mobile Toggle -->
+  <button class="mobile-toggle" id="mobileToggle" onclick="toggleSidebar()">☰</button>
+
+  <!-- App Layout -->
+  <div class="app-layout" id="appLayout">
+
+    <!-- ── Sidebar ── -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <div class="sidebar-logo-icon">⚡</div>
+          <h1>WorkOrch</h1>
+        </div>
+        <div class="sidebar-logo-tagline">Smart Work Orchestrator</div>
+      </div>
+
+      <div class="sidebar-profile">
+        <div class="profile-card" id="profileCard">
+          <div class="profile-avatar-placeholder" id="avatarPlaceholder">?</div>
+          <img class="profile-avatar" id="avatarImage" style="display:none" alt="User avatar">
+          <div class="profile-info">
+            <div class="profile-name" id="profileName">Loading...</div>
+            <div class="profile-email" id="profileEmail">...</div>
+          </div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Main</div>
+        <div class="nav-item active" data-view="dashboard" onclick="switchView('dashboard')">
+          <span class="nav-icon">🏠</span> Dashboard
+        </div>
+        <div class="nav-item" data-view="chat" onclick="switchView('chat')">
+          <span class="nav-icon">💬</span> Chat
+        </div>
+
+        <div class="nav-section-label">Quick Actions</div>
+        <div class="nav-item" onclick="sendQuickAction('Show me my schedule for today')">
+          <span class="nav-icon">📅</span> My Calendar
+        </div>
+        <div class="nav-item" onclick="sendQuickAction('Show me my unread emails')">
+          <span class="nav-icon">📧</span> Unread Emails
+        </div>
+        <div class="nav-item" onclick="sendQuickAction('Show my profile')">
+          <span class="nav-icon">👤</span> My Profile
+        </div>
+        <div class="nav-item" onclick="sendQuickAction('Show my productivity history')">
+          <span class="nav-icon">📊</span> History
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="logout-btn" onclick="handleLogout()">
+          <span>🚪</span> Sign Out
+        </button>
+      </div>
+    </aside>
+
+    <!-- ── Main Content ── -->
+    <main class="main-content">
+
+      <!-- Welcome Banner -->
+      <div class="welcome-banner" id="welcomeBanner">
+        <div class="welcome-text">
+          <h2 id="welcomeTitle">Welcome! 👋</h2>
+          <p id="welcomeSubtitle">Let's make today productive.</p>
+        </div>
+      </div>
+
+      <!-- Quick Action Cards (Dashboard View) -->
+      <div class="quick-actions" id="quickActions">
+        <div class="action-card" onclick="sendQuickAction('Plan my day. I have the following tasks: Review PRs (priority 9, 2hrs, deep_work), Team standup (priority 7, 1hr, meeting), Write documentation (priority 8, 2hrs, deep_work), Reply to emails (priority 5, 1hr, admin)')">
+          <span class="action-card-icon">📅</span>
+          <div class="action-card-title">Plan Your Day</div>
+          <div class="action-card-desc">Create a structured deep work schedule</div>
+        </div>
+        <div class="action-card" onclick="sendQuickAction('Show me my unread emails')">
+          <span class="action-card-icon">📧</span>
+          <div class="action-card-title">Check Emails</div>
+          <div class="action-card-desc">See your latest unread messages</div>
+        </div>
+        <div class="action-card" onclick="sendQuickAction('What does my calendar look like today?')">
+          <span class="action-card-icon">🗓️</span>
+          <div class="action-card-title">View Calendar</div>
+          <div class="action-card-desc">Check your upcoming events</div>
+        </div>
+        <div class="action-card" onclick="sendQuickAction('Show my productivity stats and history')">
+          <span class="action-card-icon">📊</span>
+          <div class="action-card-title">Productivity Stats</div>
+          <div class="action-card-desc">Review your performance metrics</div>
+        </div>
+      </div>
+
+      <!-- Chat Area -->
+      <div class="chat-area" id="chatArea">
+        <div class="chat-messages" id="chatMessages">
+          <!-- Empty state shown initially -->
+          <div class="chat-empty" id="chatEmpty">
+            <div class="chat-empty-icon">💬</div>
+            <div class="chat-empty-text">
+              Start a conversation with WorkOrch.<br>
+              Try clicking a quick action above or type a message below.
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Input -->
+        <div class="chat-input-area">
+          <div class="chat-input-wrapper">
+            <input 
+              type="text" 
+              class="chat-input" 
+              id="chatInput" 
+              placeholder="Ask WorkOrch anything..." 
+              autocomplete="off"
+              onkeydown="handleInputKeydown(event)"
+            >
+            <button class="chat-send-btn" id="sendBtn" onclick="sendMessage()">
+              ➤
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

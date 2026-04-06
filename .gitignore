@@ -11,5 +11,11 @@ venv/
 # Environment variables
 .env
 
+# Secrets & Local DBs
+credentials.json
+token.json
+
+.adk/
+
 # OS files
 .DS_Store
