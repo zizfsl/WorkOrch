@@ -7,9 +7,9 @@ def login_with_google() -> str:
     the user's profile with their real name from Google.
     """
     try:
-        from auth import authenticate_with_google
-    except ModuleNotFoundError:
         from workorch.auth import authenticate_with_google
+    except ModuleNotFoundError:
+        from auth import authenticate_with_google  # type: ignore
         
     result = authenticate_with_google()
     

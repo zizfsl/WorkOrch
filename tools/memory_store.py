@@ -28,7 +28,7 @@ def save_day(summary: str) -> str:
     return "Saved successfully"
 
 
-def save_day_to_db(completion_rate: float, deep_work_hours: float) -> str:
+def save_day_to_db(completion_rate: float, deep_work_hours: float, user_name: str = "") -> str:
     """
     Save results to AlloyDB.
     """
@@ -44,9 +44,18 @@ def save_day_to_db(completion_rate: float, deep_work_hours: float) -> str:
         )
         cursor = conn.cursor()
 
+        # Fetch the most recent user if one isn't provided
+        if not user_name:
+            cursor.execute("SELECT name FROM user_profiles ORDER BY last_active DESC LIMIT 1")
+            row = cursor.fetchone()
+            if row:
+                user_name = row[0]
+            else:
+                user_name = "default_user"
+
         cursor.execute(
-            "INSERT INTO productivity_history (summary) VALUES (%s)",
-            (summary,)
+            "INSERT INTO productivity_history (user_name, summary) VALUES (%s, %s)",
+            (user_name, summary)
         )
 
         conn.commit()

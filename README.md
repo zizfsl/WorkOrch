@@ -43,7 +43,7 @@ flowchart LR
         direction TB
         GCal["Google Workspace (Calendar & Gmail)"]
         OAuth["Google OAuth (Profiles)"]
-        MemDB[("Local Storage\nmemory.json / profiles.json")]
+        MemDB[("Local Storage\n(Deprecated)")]
         AlloyDB[("AlloyDB PostgreSQL\n(Productivity History)")]
     end
 
@@ -66,7 +66,7 @@ The platform uses an intelligent **Orchestrator Agent** that determines the inte
 4. **📅 Planner Agent**: Constructs structured, optimized blocking schedules based on priorities and duration.
 5. **⚙️ Optimizer Agent**: Replans your day automatically when you finish early, run late, or emergencies happen.
 6. **📊 Reflection Agent**: Computes completion rates and "deep work" hours, saving end-of-day reports globally to Google Cloud AlloyDB.
-7. **📈 History Coach Agent**: Analyzes your archived JSON memory logs to surface trends, streaks, and personalized productivity coaching.
+7. **📈 History Coach Agent**: Analyzes your archived AlloyDB memory logs to surface trends, streaks, and personalized productivity coaching.
 8. **🤖 Assistant Agent**: Fetches your live Upcoming Events from Google Workspace Google Calendar and Unread Emails from Gmail.
 
 ### Application Layout
@@ -142,6 +142,20 @@ The Reflection Agent commits your productivity summaries to a PostgreSQL AlloyDB
        id SERIAL PRIMARY KEY,
        summary TEXT NOT NULL,
        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+   );
+
+   CREATE TABLE user_profiles (
+       name VARCHAR(255) PRIMARY KEY,
+       role VARCHAR(255),
+       preferred_work_start INT,
+       preferred_work_end INT,
+       work_style VARCHAR(50),
+       goals JSONB,
+       total_sessions INT,
+       avg_completion_rate FLOAT,
+       total_deep_work_hours INT,
+       last_active DATE,
+       history JSONB
    );
    ```
 
