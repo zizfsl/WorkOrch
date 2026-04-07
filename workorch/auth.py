@@ -55,13 +55,21 @@ def get_credentials():
 _active_flow = None
 
 
+def get_flow(redirect_uri: str):
+    """Helper to create the OAuth flow from file or environment variable."""
+    config_json = os.environ.get("GOOGLE_CLIENT_CONFIG")
+    if config_json:
+        return Flow.from_client_config(json.loads(config_json), scopes=SCOPES, redirect_uri=redirect_uri)
+    return Flow.from_client_secrets_file(CREDS_PATH, scopes=SCOPES, redirect_uri=redirect_uri)
+
+
 def get_web_auth_url(redirect_uri: str) -> str:
     """
     Generate the Google OAuth authorization URL for browser redirect.
     Stores the flow object so it can be reused during token exchange.
     """
     global _active_flow
-    _active_flow = Flow.from_client_secrets_file(CREDS_PATH, scopes=SCOPES, redirect_uri=redirect_uri)
+    _active_flow = get_flow(redirect_uri)
     # Disable PKCE (code_verifier) to avoid 'Missing code verifier' errors
     _active_flow.code_verifier = None
     auth_url, _ = _active_flow.authorization_url(
@@ -79,7 +87,7 @@ def exchange_code_for_credentials(code: str, redirect_uri: str):
     """
     global _active_flow
     if _active_flow is None:
-        _active_flow = Flow.from_client_secrets_file(CREDS_PATH, scopes=SCOPES, redirect_uri=redirect_uri)
+        _active_flow = get_flow(redirect_uri)
         _active_flow.code_verifier = None
 
     _active_flow.fetch_token(code=code)

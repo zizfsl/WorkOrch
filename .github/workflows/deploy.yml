@@ -53,6 +53,8 @@ jobs:
             ALLOYDB_USER=postgres
             ALLOYDB_HOST=127.0.0.1
             GOOGLE_GENAI_USE_VERTEXAI=0
+            BASE_URL=https://workorch-54gqljoqga-uc.a.run.app
           secrets: |
             ALLOYDB_PASSWORD=ALLOYDB_PASSWORD:latest
             GOOGLE_API_KEY=GOOGLE_API_KEY:latest
+            GOOGLE_CLIENT_CONFIG=GOOGLE_CLIENT_CONFIG:latest
