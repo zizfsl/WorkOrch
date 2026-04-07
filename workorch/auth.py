@@ -16,7 +16,8 @@ SCOPES = [
 
 BASE_DIR = os.path.dirname(__file__)
 CREDS_PATH = os.path.join(BASE_DIR, 'credentials.json')
-TOKEN_PATH = os.path.join(BASE_DIR, 'token.json')
+# Use /tmp for token storage in Cloud Run (which is writable)
+TOKEN_PATH = "/tmp/token.json" if os.environ.get("K_SERVICE") else os.path.join(BASE_DIR, 'token.json')
 
 
 def get_credentials():

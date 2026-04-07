@@ -8,12 +8,18 @@ from psycopg2.extras import Json
 # =====================================================
 
 def get_db_connection():
-    return psycopg2.connect(
-        host=os.environ.get("ALLOYDB_HOST"),
-        user=os.environ.get("ALLOYDB_USER"),
-        password=os.environ.get("ALLOYDB_PASSWORD"),
-        dbname=os.environ.get("ALLOYDB_DB_NAME")
-    )
+    try:
+        return psycopg2.connect(
+            host=os.environ.get("ALLOYDB_HOST"),
+            user=os.environ.get("ALLOYDB_USER"),
+            password=os.environ.get("ALLOYDB_PASSWORD"),
+            dbname=os.environ.get("ALLOYDB_DB_NAME"),
+            # Add a 5 second timeout so we don't hang forever
+            connect_timeout=5
+        )
+    except Exception as e:
+        print(f"❌ DATABASE CONNECTION ERROR: {e}")
+        raise e
 
 
 # =====================================================
