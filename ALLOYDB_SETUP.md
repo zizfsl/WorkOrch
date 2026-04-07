@@ -4,8 +4,21 @@ This guide walks you through setting up Google Cloud AlloyDB for the Multi-Agent
 
 ## 1. Create an AlloyDB Cluster and Instance
 
-Refer to below document to create a alloydb database cluster
-https://codelabs.developers.google.com/quick-alloydb-setup?hl=en#0
+While you can refer to the [AlloyDB Setup Codelab](https://codelabs.developers.google.com/quick-alloydb-setup?hl=en#0), here is a step-by-step guide to creating your cluster from the Google Cloud Console:
+
+1. **Enable the API**: Navigate to the [Google Cloud Console](https://console.cloud.google.com/) and ensure the **AlloyDB for PostgreSQL API** is enabled.
+2. **Go to AlloyDB**: Search for "AlloyDB" in the top search bar and click on the "AlloyDB" product page.
+3. **Create Cluster**: Click the **Create Cluster** (or **Create**) button.
+4. **Choose Cluster Type**: Select **Highly Available** (for production/Cloud Run) or **Basic** (for simple development).
+5. **Configure Cluster Details**:
+   - **Cluster ID**: Enter a name like `workorch-cluster`.
+   - **Password**: Set a strong password for the default `postgres` user. Keep this safe, as it will be your `ALLOYDB_PASSWORD`.
+   - **Region**: Choose the region closest to where you plan to deploy your Cloud Run service (e.g., `us-central1`).
+   - **Network**: Under standard configurations, you must select the `default` VPC network. You will be prompted to set up a **Private services access connection** if one doesn't already exist. Follow the prompts to allocate an IP range and create the connection.
+6. **Configure Primary Instance**:
+   - **Instance ID**: Give it a name like `workorch-instance`.
+   - **Machine Type**: For starting out, a standard 2-vCPU machine type is sufficient.
+7. **Create**: Click **Create Cluster**. *Note: It will take several minutes for Google Cloud to provision the cluster and instance.*
 
 ## 2. Connect to the Database
 
