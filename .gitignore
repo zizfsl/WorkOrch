@@ -1,4 +1,4 @@
-# Python cache — never commit these
+# Python cache
 __pycache__/
 *.pyc
 *.pyo
@@ -8,13 +8,20 @@ __pycache__/
 .venv/
 venv/
 
-# Environment variables
+# Environment variables & Secrets (NEVER COMMIT THESE)
 .env
-
-# Secrets & Local DBs
+workorch/.env
+service-account.json
 credentials.json
+workorch/credentials.json
 token.json
+workorch/token.json
 
+# Local artifacts
+alloydb-auth-proxy.exe
+memory.json
+user_profiles.json
+last_user.json
 .adk/
 
 # OS files
