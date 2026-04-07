@@ -1,4 +1,4 @@
-﻿aiosqlite==0.22.1
+aiosqlite==0.22.1
 alembic==1.18.4
 annotated-doc==0.0.4
 annotated-types==0.7.0
@@ -92,7 +92,6 @@ pyparsing==3.3.2
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.1
 python-multipart==0.0.22
-pywin32==311
 PyYAML==6.0.3
 referencing==0.37.0
 requests==2.32.5
