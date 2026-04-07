@@ -36,7 +36,8 @@ from google.genai import types
 app = FastAPI(title="WorkOrch")
 
 STATIC_DIR = os.path.join(_THIS_DIR, "static")
-REDIRECT_URI = "http://localhost:8000/auth/callback"
+BASE_URL = os.environ.get("BASE_URL", "http://localhost:8000").rstrip("/")
+REDIRECT_URI = f"{BASE_URL}/auth/callback"
 
 # Mount static files
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
