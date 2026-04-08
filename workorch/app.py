@@ -12,6 +12,7 @@ sys.path.insert(0, _THIS_DIR)
 
 # Load .env from the workorch directory BEFORE any ADK/agent imports
 load_dotenv(os.path.join(_THIS_DIR, '.env'), override=True)
+print(f"DEBUG: GOOGLE_APPLICATION_CREDENTIALS = {os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')}")
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -113,7 +114,7 @@ async def auth_callback(request: Request, code: str = None, state: str = None, e
 async def auth_logout():
     """Clear token and redirect to login."""
     clear_token()
-    return RedirectResponse(url="/auth/login")
+    return RedirectResponse(url="/")
 
 
 # =====================================================

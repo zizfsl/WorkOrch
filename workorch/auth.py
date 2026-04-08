@@ -20,9 +20,24 @@ CREDS_PATH = os.path.join(BASE_DIR, 'credentials.json')
 TOKEN_PATH = "/tmp/token.json" if os.environ.get("K_SERVICE") else os.path.join(BASE_DIR, 'token.json')
 
 
+def _creds_from_json_str(creds_json: str):
+    """Helper: build Credentials object from a JSON string."""
+    try:
+        data = json.loads(creds_json)
+        creds = Credentials.from_authorized_user_info(data, SCOPES)
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        return creds if creds and creds.valid else None
+    except Exception as e:
+        print(f"⚠️  creds_from_json_str error: {e}")
+        return None
+
+
+
+
 def get_credentials():
     """
-    Load saved credentials from token.json.
+    Load saved Google credentials from token.json (for Google-login users).
     Returns the credentials object or None.
     """
     creds = None
