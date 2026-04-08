@@ -81,13 +81,14 @@ def get_web_auth_url(redirect_uri: str) -> str:
     return auth_url
 
 
-def exchange_code_for_credentials(code: str, redirect_uri: str):
+def exchange_code_for_credentials(code: str, redirect_uri: str, state: str = None):
     """
     Exchange the authorization code from Google callback for credentials.
-    Reuses the stored flow object.
+    Reuses the stored flow object, or reconstructs from state if needed.
     """
     global _active_flow
     if _active_flow is None:
+        # Reconstruct flow — needed when state flows through a different Cloud Run instance
         _active_flow = get_flow(redirect_uri)
         _active_flow.code_verifier = None
 
