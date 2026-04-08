@@ -79,19 +79,32 @@ async def auth_login():
 
 
 @app.get("/auth/callback")
-async def auth_callback(code: str = None, error: str = None):
+async def auth_callback(request: Request, code: str = None, state: str = None, error: str = None):
     """Handle Google OAuth callback."""
     if error:
         return HTMLResponse(f"<h1>Auth Error</h1><p>{error}</p>", status_code=400)
     if not code:
         return HTMLResponse("<h1>No code received</h1>", status_code=400)
 
-    creds = exchange_code_for_credentials(code, REDIRECT_URI)
-    user_info = get_user_info(creds)
+    try:
+        # Re-create the flow using the state from Google's callback URL
+        creds = exchange_code_for_credentials(code, REDIRECT_URI, state=state)
+    except Exception as e:
+        print(f"❌ TOKEN EXCHANGE ERROR: {e}")
+        return HTMLResponse(f"<h1>Login Error</h1><p>{e}</p>", status_code=500)
 
-    # Auto-create/update WorkOrch profile
+    try:
+        user_info = get_user_info(creds)
+    except Exception as e:
+        print(f"❌ USER INFO ERROR: {e}")
+        user_info = {}
+
+    # Auto-create/update WorkOrch profile (non-fatal if DB is down)
     if user_info.get("name"):
-        create_or_update_profile(user_name=user_info["name"])
+        try:
+            create_or_update_profile(user_name=user_info["name"])
+        except Exception as e:
+            print(f"❌ PROFILE CREATION ERROR (non-fatal): {e}")
 
     return RedirectResponse(url="/")
 
