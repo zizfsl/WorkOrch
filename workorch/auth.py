@@ -19,6 +19,8 @@ CREDS_PATH = os.path.join(BASE_DIR, 'credentials.json')
 # Use /tmp for token storage in Cloud Run (which is writable)
 TOKEN_PATH = "/tmp/token.json" if os.environ.get("K_SERVICE") else os.path.join(BASE_DIR, 'token.json')
 
+AUTH_SESSIONS = {}  # In-memory store: session_id -> credentials_json (str)
+
 
 def _creds_from_json_str(creds_json: str):
     """Helper: build Credentials object from a JSON string."""
@@ -35,14 +37,16 @@ def _creds_from_json_str(creds_json: str):
 
 
 
-def get_credentials():
+def get_credentials(session_id: str = None):
     """
-    Load saved Google credentials from token.json (for Google-login users).
+    Load saved Google credentials from memory session or token.json (for terminal users).
     Returns the credentials object or None.
     """
     creds = None
 
-    if os.path.exists(TOKEN_PATH):
+    if session_id and session_id in AUTH_SESSIONS:
+        creds = _creds_from_json_str(AUTH_SESSIONS[session_id])
+    elif not session_id and os.path.exists(TOKEN_PATH):
         with open(TOKEN_PATH, 'r') as token_file:
             creds_data = json.load(token_file)
             creds = Credentials.from_authorized_user_info(creds_data, SCOPES)
@@ -50,25 +54,34 @@ def get_credentials():
     # If scopes changed, force a re-login
     if creds and not creds.has_scopes(SCOPES):
         creds = None
-        if os.path.exists(TOKEN_PATH):
+        if session_id and session_id in AUTH_SESSIONS:
+            del AUTH_SESSIONS[session_id]
+        elif not session_id and os.path.exists(TOKEN_PATH):
             os.remove(TOKEN_PATH)
 
     # Refresh if expired
     if creds and creds.expired and creds.refresh_token:
         try:
             creds.refresh(Request())
-            with open(TOKEN_PATH, 'w') as token_file:
-                token_file.write(creds.to_json())
+            if session_id:
+                AUTH_SESSIONS[session_id] = creds.to_json()
+            elif not session_id:
+                with open(TOKEN_PATH, 'w') as token_file:
+                    token_file.write(creds.to_json())
         except Exception:
             creds = None
-            if os.path.exists(TOKEN_PATH):
+            if session_id and session_id in AUTH_SESSIONS:
+                del AUTH_SESSIONS[session_id]
+            elif not session_id and os.path.exists(TOKEN_PATH):
                 os.remove(TOKEN_PATH)
 
     return creds
 
 
-# Module-level storage for the active flow (preserves state across requests)
-_active_flow = None
+def save_credentials(session_id: str, creds):
+    """Save user credentials to memory mapping."""
+    if creds:
+        AUTH_SESSIONS[session_id] = creds.to_json()
 
 
 def get_flow(redirect_uri: str):
@@ -79,42 +92,33 @@ def get_flow(redirect_uri: str):
     return Flow.from_client_secrets_file(CREDS_PATH, scopes=SCOPES, redirect_uri=redirect_uri)
 
 
-def get_web_auth_url(redirect_uri: str) -> str:
+def get_web_auth_url(redirect_uri: str):
     """
     Generate the Google OAuth authorization URL for browser redirect.
-    Stores the flow object so it can be reused during token exchange.
     """
-    global _active_flow
-    _active_flow = get_flow(redirect_uri)
-    # Disable PKCE (code_verifier) to avoid 'Missing code verifier' errors
-    _active_flow.code_verifier = None
-    auth_url, _ = _active_flow.authorization_url(
+    flow = get_flow(redirect_uri)
+    auth_url, _ = flow.authorization_url(
         access_type='offline',
         include_granted_scopes='true',
         prompt='consent'
     )
-    return auth_url
+    return auth_url, flow.code_verifier
 
 
-def exchange_code_for_credentials(code: str, redirect_uri: str, state: str = None):
+def exchange_code_for_credentials(code: str, redirect_uri: str, state: str = None, code_verifier: str = None):
     """
     Exchange the authorization code from Google callback for credentials.
-    Reuses the stored flow object, or reconstructs from state if needed.
     """
-    global _active_flow
-    if _active_flow is None:
-        # Reconstruct flow — needed when state flows through a different Cloud Run instance
-        _active_flow = get_flow(redirect_uri)
-        _active_flow.code_verifier = None
+    flow = get_flow(redirect_uri)
+    if code_verifier:
+        flow.code_verifier = code_verifier
+    else:
+        # Fallback if no cookie was provided
+        flow.code_verifier = None
+        
+    flow.fetch_token(code=code)
+    creds = flow.credentials
 
-    _active_flow.fetch_token(code=code)
-    creds = _active_flow.credentials
-
-    # Save token
-    with open(TOKEN_PATH, 'w') as token_file:
-        token_file.write(creds.to_json())
-
-    _active_flow = None  # Clear after use
     return creds
 
 
@@ -154,9 +158,11 @@ def authenticate_with_google():
     return get_user_info(creds)
 
 
-def clear_token():
+def clear_token(session_id: str = None):
     """Remove the saved token to force re-authentication."""
-    if os.path.exists(TOKEN_PATH):
+    if session_id and session_id in AUTH_SESSIONS:
+        del AUTH_SESSIONS[session_id]
+    elif not session_id and os.path.exists(TOKEN_PATH):
         os.remove(TOKEN_PATH)
 
 

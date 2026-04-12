@@ -21,7 +21,7 @@ import uvicorn
 
 from auth import (
     get_credentials, get_web_auth_url, exchange_code_for_credentials,
-    get_user_info, clear_token
+    get_user_info, clear_token, save_credentials
 )
 from agent import root_agent, create_or_update_profile
 
@@ -75,8 +75,11 @@ async def get_or_create_session(user_id: str):
 @app.get("/auth/login")
 async def auth_login():
     """Redirect user to Google sign-in."""
-    auth_url = get_web_auth_url(REDIRECT_URI)
-    return RedirectResponse(url=auth_url)
+    auth_url, code_verifier = get_web_auth_url(REDIRECT_URI)
+    response = RedirectResponse(url=auth_url)
+    if code_verifier:
+        response.set_cookie(key="cv", value=code_verifier, httponly=True)
+    return response
 
 
 @app.get("/auth/callback")
@@ -89,15 +92,16 @@ async def auth_callback(request: Request, code: str = None, state: str = None, e
 
     try:
         # Re-create the flow using the state from Google's callback URL
-        creds = exchange_code_for_credentials(code, REDIRECT_URI, state=state)
+        code_verifier = request.cookies.get("cv")
+        creds = exchange_code_for_credentials(code, REDIRECT_URI, state=state, code_verifier=code_verifier)
     except Exception as e:
-        print(f"❌ TOKEN EXCHANGE ERROR: {e}")
+        print(f"[ERROR] TOKEN EXCHANGE ERROR: {e}")
         return HTMLResponse(f"<h1>Login Error</h1><p>{e}</p>", status_code=500)
 
     try:
         user_info = get_user_info(creds)
     except Exception as e:
-        print(f"❌ USER INFO ERROR: {e}")
+        print(f"[ERROR] USER INFO ERROR: {e}")
         user_info = {}
 
     # Auto-create/update WorkOrch profile (non-fatal if DB is down)
@@ -105,16 +109,26 @@ async def auth_callback(request: Request, code: str = None, state: str = None, e
         try:
             create_or_update_profile(user_name=user_info["name"])
         except Exception as e:
-            print(f"❌ PROFILE CREATION ERROR (non-fatal): {e}")
+            print(f"[ERROR] PROFILE CREATION ERROR (non-fatal): {e}")
 
-    return RedirectResponse(url="/")
+    # Set up session
+    session_id = str(uuid.uuid4())
+    save_credentials(session_id, creds)
+    
+    response = RedirectResponse(url="/")
+    response.set_cookie(key="session_id", value=session_id, httponly=True)
+    return response
 
 
 @app.get("/auth/logout")
-async def auth_logout():
+async def auth_logout(request: Request):
     """Clear token and redirect to login."""
-    clear_token()
-    return RedirectResponse(url="/")
+    session_id = request.cookies.get("session_id")
+    clear_token(session_id)
+    response = RedirectResponse(url="/")
+    if session_id:
+        response.delete_cookie(key="session_id")
+    return response
 
 
 # =====================================================
@@ -122,9 +136,10 @@ async def auth_logout():
 # =====================================================
 
 @app.get("/api/user")
-async def api_user():
+async def api_user(request: Request):
     """Return the current authenticated user's info."""
-    creds = get_credentials()
+    session_id = request.cookies.get("session_id")
+    creds = get_credentials(session_id)
     if not creds or not creds.valid:
         return JSONResponse({"authenticated": False}, status_code=401)
 
@@ -135,7 +150,8 @@ async def api_user():
 @app.post("/api/chat")
 async def api_chat(request: Request):
     """Send a message to the ADK agent and return the response."""
-    creds = get_credentials()
+    session_id = request.cookies.get("session_id")
+    creds = get_credentials(session_id)
     if not creds or not creds.valid:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
 
@@ -181,9 +197,10 @@ async def api_chat(request: Request):
 # =====================================================
 
 @app.get("/", response_class=HTMLResponse)
-async def index():
+async def index(request: Request):
     """Serve main page or landing page."""
-    creds = get_credentials()
+    session_id = request.cookies.get("session_id")
+    creds = get_credentials(session_id)
     if not creds or not creds.valid:
         html_path = os.path.join(STATIC_DIR, "landing.html")
         with open(html_path, "r", encoding="utf-8") as f:

@@ -18,7 +18,7 @@ def get_db_connection():
             connect_timeout=5
         )
     except Exception as e:
-        print(f"❌ DATABASE CONNECTION ERROR: {e}")
+        print(f"[ERROR] DATABASE CONNECTION ERROR: {e}")
         raise e
 
 
