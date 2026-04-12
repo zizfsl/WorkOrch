@@ -51,7 +51,7 @@ jobs:
           env_vars: |
             ALLOYDB_DB_NAME=workorch_db
             ALLOYDB_USER=postgres
-            ALLOYDB_HOST=127.0.0.1
+            ALLOYDB_HOST=34.9.152.136
             GOOGLE_GENAI_USE_VERTEXAI=0
             BASE_URL=https://workorch-54gqljoqga-uc.a.run.app
           secrets: |
