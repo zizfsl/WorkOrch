@@ -11,7 +11,7 @@ _THIS_DIR = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, _THIS_DIR)
 
 # Load .env from the workorch directory BEFORE any ADK/agent imports
-load_dotenv(os.path.join(_THIS_DIR, '.env'), override=True)
+load_dotenv(os.path.join(_THIS_DIR, '.env'), override=False)
 print(f"DEBUG: GOOGLE_APPLICATION_CREDENTIALS = {os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')}")
 
 from fastapi import FastAPI, Request
