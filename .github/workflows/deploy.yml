@@ -47,11 +47,12 @@ jobs:
           region: ${{ env.REGION }}
           image: "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
           flags: |
-            --add-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:workorch-cluster
+            --network=default
+            --vpc-egress=private-ranges-only
           env_vars: |
             ALLOYDB_DB_NAME=workorch_db
             ALLOYDB_USER=postgres
-            ALLOYDB_HOST=34.9.152.136
+            ALLOYDB_HOST=10.136.0.2
             GOOGLE_GENAI_USE_VERTEXAI=0
             BASE_URL=https://workorch-54gqljoqga-uc.a.run.app
           secrets: |
