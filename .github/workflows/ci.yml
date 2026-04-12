@@ -1,0 +1,21 @@
+name: Build Check (Codespace Branches)
+
+on:
+  push:
+    branches-ignore:
+      - main # Runs on all branches EXCEPT main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    name: Verify Docker compilation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test Docker Pipeline Build
+        run: docker build --progress=plain -t test_workorch .

@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-      - faisal-alltrack
-  workflow_dispatch:
 env:
   PROJECT_ID: genaiproject-491818
   REGION: us-central1
